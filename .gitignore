@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.venv/
+venv/
+ENV/
+build/
+dist/
+*.egg-info/
+
+# Environment and secrets
+.env
+
+# Runtime logs
+*.log
+launchd*.out.log
+launchd*.err.log
+
+# Exported user health data
+data/
+
+# Personal local machine LaunchAgents
+com.erikwebb.*.plist
+
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride

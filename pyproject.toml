@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "renpho-garmin-sync"
+version = "1.0.0"
+description = "Sync Wi-Fi / Bluetooth Renpho smart scale body composition measurements directly to Garmin Connect."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [
+    { name = "Erik Webb", email = "erik@erikwebb.net" }
+]
+keywords = ["garmin", "renpho", "fit", "health", "smart-scale", "body-composition"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Home Automation",
+]
+dependencies = [
+    "garminconnect>=0.2.14",
+    "renpho-py>=0.1.4",
+    "openpyxl>=3.1.0",
+    "requests>=2.28.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/erikwebb/renpho-garmin-sync"
