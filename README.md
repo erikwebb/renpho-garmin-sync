@@ -127,49 +127,6 @@ Run the sync script in dry-run mode. If Garmin tokens do not exist in `~/.garmin
 
 ---
 
-## Automated Scheduling (macOS `launchd`)
-
-To run an automatic daily background sync on macOS (e.g. at 9:00 AM), save the following plist to `~/Library/LaunchAgents/com.user.renpho-garmin-sync.plist` (replacing `/PATH/TO/renpho-garmin-sync` with your actual repo path):
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key>
-    <string>com.user.renpho-garmin-sync</string>
-    <key>ProgramArguments</key>
-    <array>
-        <string>/bin/zsh</string>
-        <string>/PATH/TO/renpho-garmin-sync/scripts/run_sync.sh</string>
-    </array>
-    <key>WorkingDirectory</key>
-    <string>/PATH/TO/renpho-garmin-sync</string>
-    <key>StartCalendarInterval</key>
-    <dict>
-        <key>Hour</key>
-        <integer>9</integer>
-        <key>Minute</key>
-        <integer>0</integer>
-    </dict>
-    <key>StandardOutPath</key>
-    <string>/PATH/TO/renpho-garmin-sync/logs/launchd-sync.out.log</string>
-    <key>StandardErrorPath</key>
-    <string>/PATH/TO/renpho-garmin-sync/logs/launchd-sync.err.log</string>
-</dict>
-</plist>
-```
-
-Load the agent with `launchctl`:
-
-```bash
-launchctl load ~/Library/LaunchAgents/com.user.renpho-garmin-sync.plist
-```
-
-The runner script (`scripts/run_sync.sh`) includes a built-in network readiness guard that polls for active Wi-Fi and DNS resolution for up to 30 seconds after waking from system sleep before firing requests.
-
----
-
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
