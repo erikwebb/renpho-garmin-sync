@@ -21,4 +21,9 @@
 
 - `./scripts/export.sh`: Runs [export_body_composition.py](file:///Users/erikwebb/Development/renpho-garmin-sync/export_body_composition.py) interactively with the project virtual environment, forwarding any CLI options (e.g. `--open-sheet`).
 
+## Upstream Tracking
+
+- When doing any work, check for updates to [`docs/UPSTREAM_NOTES.md`](docs/UPSTREAM_NOTES.md) to keep upstream PRs, issues, and library compatibility in sync.
+
+
 
