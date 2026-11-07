@@ -7,7 +7,7 @@ name = "renpho-garmin-sync"
 version = "1.0.0"
 description = "Sync Wi-Fi / Bluetooth Renpho smart scale body composition measurements directly to Garmin Connect."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [
     { name = "Erik Webb", email = "erik@erikwebb.net" }
