@@ -22,9 +22,9 @@ launchd*.err.log
 # Exported user health data
 data/
 
-# Personal local machine LaunchAgents
-com.erikwebb.*.plist
-launchd/local/
+# macOS LaunchAgents & scheduling
+*.plist
+launchd/
 
 # macOS system files
 .DS_Store
