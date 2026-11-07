@@ -22,7 +22,6 @@ Automated, direct synchronization of smart scale body composition metrics from *
 * **Unit Conversion & Sanitation**: Renpho reports muscle as a percentage (%) of body weight, whereas Garmin's FIT message format requires muscle in kilograms (kg). The sync engine handles conversions and heuristics automatically.
 * **Smart Non-Destructive Deduplication**: Inspects existing Garmin entries. If an existing entry is weight-only (e.g., synced from Apple Health or MyFitnessPal), the script *upgrades* it with full body composition data instead of creating duplicates.
 * **Session Persistence & Concurrency**: Supports target user IDs (`--target-user-id`) so you can authenticate using a secondary profile while syncing measurements for a primary profile, preventing the Renpho mobile app from getting logged out.
-* **Automated History Export**: Includes a full export utility that formats complete historical weigh-ins into styled Excel (`.xlsx`), CSV, Google Drive sync folders, or instant clipboard copy (`pbcopy`) for `sheets.new`.
 
 ---
 
@@ -110,16 +109,6 @@ Run the sync script in dry-run mode. If Garmin tokens do not exist in `~/.garmin
 ./sync_renpho_to_garmin.py --force
 ```
 
-### Export Historical Body Composition
-
-```bash
-# Export Garmin history to CSV and styled Excel in data/
-./scripts/export.sh
-
-# Open Google Sheet in browser ready for 1-click paste (copies TSV to macOS clipboard)
-./scripts/export.sh --open-sheet
-```
-
 ---
 
 ## CLI Reference
@@ -154,15 +143,7 @@ sed -i '' "s|/PATH/TO/renpho-garmin-sync|$(pwd)|g" ~/Library/LaunchAgents/com.us
 launchctl load ~/Library/LaunchAgents/com.user.renpho-garmin-sync.plist
 ```
 
-### Weekly History Export (Sundays 9:30 AM)
-
-```bash
-cp launchd/com.example.renpho-garmin-export.plist ~/Library/LaunchAgents/com.user.renpho-garmin-export.plist
-sed -i '' "s|/PATH/TO/renpho-garmin-sync|$(pwd)|g" ~/Library/LaunchAgents/com.user.renpho-garmin-export.plist
-launchctl load ~/Library/LaunchAgents/com.user.renpho-garmin-export.plist
-```
-
-The runner scripts (`scripts/run_sync.sh` and `scripts/run_export.sh`) include a built-in network readiness guard that polls for active Wi-Fi and DNS resolution for up to 30 seconds after waking from system sleep before firing requests.
+The runner script (`scripts/run_sync.sh`) includes a built-in network readiness guard that polls for active Wi-Fi and DNS resolution for up to 30 seconds after waking from system sleep before firing requests.
 
 ---
 
