@@ -1,139 +1,79 @@
-# Upstream Patches & API Reverse Engineering Notes
+# Upstream Patches, Issues & PR Tracker
 
-This document contains reverse-engineering findings, bug reports, and reference patches suitable for upstream contribution to [`ChocoTonic/renpho-py`](https://github.com/ChocoTonic/renpho-py) and related Renpho / Garmin integration libraries.
+This document tracks reverse-engineering findings, upstream pull requests, issues, and community discussions across the Renpho and Garmin open-source ecosystems.
+
+---
+
+## Upstream Status & PR Matrix
+
+| Issue / Feature | Target Project | Status | Upstream Links |
+|---|---|---|---|
+| **Login `-114` Decryption Failure** | `renpho-py` / `renpho-api` | Merged in `renpho-py` v1.3.0; Open in `renpho-api` | [ChocoTonic/renpho-py#5](https://github.com/ChocoTonic/renpho-py/pull/5)<br>[danvaneijck/renpho-api#12](https://github.com/danvaneijck/renpho-api/issues/12)<br>[danvaneijck/renpho-api#13](https://github.com/danvaneijck/renpho-api/pull/13) |
+| **Timestamp & Timezone Mismatch (+8h Skew)** | `renpho-py` | **PR Submitted (Open)** | [ChocoTonic/renpho-py#11](https://github.com/ChocoTonic/renpho-py/pull/11) |
+| **24-Shard Database Routing (`user_id % 24`)** | `renpho-py` | Merged in `renpho-py` v1.3.0 | [ChocoTonic/renpho-py#8](https://github.com/ChocoTonic/renpho-py/pull/8) |
+| **Request Timeouts & Bounded Pagination** | `renpho-py` | Merged in `renpho-py` v1.3.0 | [ChocoTonic/renpho-py#7](https://github.com/ChocoTonic/renpho-py/pull/7) |
+| **Fork Reconciliation & PyPI Handoff** | `renpho-api` | **Discussion Opened** | [danvaneijck/renpho-api#15](https://github.com/danvaneijck/renpho-api/issues/15) |
+| **Garmin FIT Muscle Mass (% vs. kg)** | `renpho-garmin-sync` | Implemented locally | [sync_renpho_to_garmin.py](https://github.com/erikwebb/renpho-garmin-sync/blob/main/sync_renpho_to_garmin.py) |
 
 ---
 
 ## 1. Renpho Cloud Login Failure: `code=-114` ("Decryption failed")
 
-### Target
-`renpho.client.RenphoClient` (in `renpho-py` / `renpho-api`)
+* **Upstream PR (Merged)**: [`ChocoTonic/renpho-py#5: Fix Renpho login decryption failure and verify request headers`](https://github.com/ChocoTonic/renpho-py/pull/5)
+* **Upstream Issue**: [`ChocoTonic/renpho-py#1: Login fails with code -114`](https://github.com/ChocoTonic/renpho-py/issues/1)
+* **Legacy Upstream Issue**: [`danvaneijck/renpho-api#12: Login Failed - code=-114`](https://github.com/danvaneijck/renpho-api/issues/12)
+* **Legacy Upstream PR**: [`danvaneijck/renpho-api#13: fix(client): send appVersion on login so gateway can decrypt`](https://github.com/danvaneijck/renpho-api/pull/13)
 
-### Problem
-Starting late 2026, calls to Renpho's `/renpho-data/user/login` endpoint fail with:
-```json
-{"code": -114, "msg": "Decryption failed"}
-```
-even when credentials and payload encryption are 100% valid.
+### Problem & Resolution
+Starting in October 2026, Renpho's API gateway (`cloud.renpho.com`) rejects `/renpho-data/user/login` requests with `code=-114 ("Decryption failed")` if client metadata headers are omitted on the initial unauthenticated call.
 
-### Root Cause
-Renpho's cloud gateway now rejects login requests if client platform metadata headers are missing on the initial unauthenticated request. Previous versions of the library only attached these headers or tokens *after* successful authentication.
-
-### Fix / Pull Request
-Initialize the requests `Session` with client metadata and an Android OkHttp User-Agent before calling `login()`:
-
-```python
-class PatchedRenphoClient(RenphoClient):
-    def __init__(self, email: str, password: str, *, debug: bool = False):
-        super().__init__(email, password, debug=debug)
-        self._session.headers.update(
-            {
-                "appVersion": APP_VERSION,  # e.g. "3.8.0"
-                "platform": PLATFORM,      # e.g. "android"
-                "User-Agent": "okhttp/4.9.3",
-            }
-        )
-
-    def _post(self, endpoint: str, body: dict, *, auth: bool = True, extra_headers: dict | None = None) -> dict:
-        result = super()._post(endpoint, body, auth=auth, extra_headers=extra_headers)
-        # Renpho's newer gateway responses use `message` instead of `msg`
-        if "msg" not in result and "message" in result:
-            result["msg"] = result["message"]
-        return result
-```
+The gateway uses the `appVersion` header to select the appropriate decryption key. Without it, the server falls back to an incompatible key. The fix attaches `appVersion`, `platform`, and the Android `okhttp/4.9.3` User-Agent to the session before calling `login()`. This is available in `renpho-py>=1.3.0`.
 
 ---
 
-## 2. Table Sharding Fallback for Wi-Fi Scales (`user_id % 24`)
+## 2. Timestamp Offset & Timezone Corruption (+8h Server Skew)
 
-### Target
-`RenphoClient.get_measurements()` / `get_all_measurements()`
+* **Upstream PR**: [`ChocoTonic/renpho-py#11: feat(models): parse localCreatedAt with timeZone and normalize timestamps`](https://github.com/ChocoTonic/renpho-py/pull/11)
+* **Local Implementation**: [`sync_renpho_to_garmin.py: extract_epoch_seconds()`](https://github.com/erikwebb/renpho-garmin-sync/blob/main/sync_renpho_to_garmin.py#L241-L281)
 
-### Problem
-For Wi-Fi scale models (such as the Renpho Elis Nova) that connect directly to home 2.4 GHz Wi-Fi without the mobile app, `client.get_device_info()` often returns an empty `scale: []` array or omits `tableName`. As a result, standard library calls fail to locate the user's measurement table.
+### Problem & Resolution
+Renpho's raw `timeStamp` integer field in measurement payloads is frequently misaligned by +8 hours (server backend time relative to UTC) or local time without timezone context. 
 
-### Root Cause & Findings
-Renpho shards user measurements across 24 database tables:
-`measurements_info_0` through `measurements_info_23`.
+PR [#11](https://github.com/ChocoTonic/renpho-py/pull/11) adds `parse_timestamp()` and enhances `Measurement.from_dict()` in `renpho-py` to prioritize `localCreatedAt` alongside `timeZone` (e.g. `"-04:00"` or `"-4:00"`, correctly propagating sign into minute calculations) before falling back to `timeStamp` or `createdAt`.
 
-The shard index is deterministically calculated using modulo arithmetic on the user's 64-bit integer `user_id`:
+---
+
+## 3. 24-Shard Database Routing for Wi-Fi Scales (`user_id % 24`)
+
+* **Upstream PR (Merged)**: [`ChocoTonic/renpho-py#8: Add validated account login and strict measurement profile collection`](https://github.com/ChocoTonic/renpho-py/pull/8)
+* **Legacy PR**: [`danvaneijck/renpho-api#9: Tape-measure support and multi-account fetch`](https://github.com/danvaneijck/renpho-api/pull/9)
+
+### Problem & Resolution
+For Wi-Fi scales (such as the Renpho Elis Nova) that connect directly to home 2.4 GHz Wi-Fi without the mobile app open, `get_device_info()` often omits the scale's `tableName`.
+
+Renpho shards measurements across 24 database tables (`measurements_info_0` through `measurements_info_23`). The shard index is deterministically derived via:
 $$\text{shard\_index} = \text{user\_id} \pmod{24}$$
-
-### Fix / Pull Request
-When `device_info` does not supply an active table name, dynamically compute the shard:
-
-```python
-if target_user_id is not None:
-    shard_table = f"measurements_info_{int(target_user_id) % 24}"
-```
+Both `renpho-py>=1.3.0` and our sync engine dynamically route queries to `measurements_info_{user_id % 24}` when device discovery returns an empty table name.
 
 ---
 
-## 3. Dual-Endpoint Measurement Querying
+## 4. Fork Reconciliation & Community Transition
 
-### Target
-Measurement retrieval across firmware revisions.
+* **Discussion Issue**: [`danvaneijck/renpho-api#15: Proposal: Reconcile with maintained community continuation (renpho-py / @ChocoTonic)`](https://github.com/danvaneijck/renpho-api/issues/15)
 
-### Problem
-Calling only `queryAllMeasureDataList` misses newer body composition records, while querying only `queryBodyCompositionMeasureData` misses older records or entries uploaded via alternate scale models.
-
-### Fix
-Query both endpoints across pagination and deduplicate using unique measurement IDs:
-
-```python
-for endpoint_key in ("body_composition_measurements", "measurements"):
-    endpoint = ENDPOINTS[endpoint_key]
-    # paginate page 1..N and deduplicate on record id / timestamp
-```
+### Problem & Resolution
+The original `renpho-api` package has been dormant since August 2026, causing new users to hit the `-114` decryption crash without realizing `ChocoTonic/renpho-py` exists as a maintained drop-in replacement. Issue [#15](https://github.com/danvaneijck/renpho-api/issues/15) proposes adding a maintainer pointer or deprecation notice on PyPI/GitHub.
 
 ---
 
-## 4. Renpho Timestamp Offset & Timezone Corruption
+## 5. Garmin FIT Muscle Mass (% vs. kg)
 
-### Target
-Data transformation / normalization in Renpho client wrappers.
+* **Local Implementation**: [`sync_renpho_to_garmin.py: map_renpho_to_garmin()`](https://github.com/erikwebb/renpho-garmin-sync/blob/main/sync_renpho_to_garmin.py#L317-L327)
+* **Unit Tests**: [`tests/test_sync.py: test_map_renpho_to_garmin_muscle_percentage_to_kg_conversion()`](https://github.com/erikwebb/renpho-garmin-sync/blob/main/tests/test_sync.py#L65-L93)
 
-### Problem
-The integer Unix `timeStamp` / `time_stamp` field in Renpho JSON payloads is frequently misaligned by +8 hours (server backend time) relative to when the weigh-in actually occurred.
+### Problem & Resolution
+Renpho returns `muscle` as a percentage (%) of body weight, but Garmin's FIT message format (`WeightScaleMesg`) strictly expects `muscle_mass` in kilograms (kg). 
 
-### Fix
-Always prioritize `localCreatedAt` formatted string along with the `timeZone` field (e.g. `"-4:00"`):
-
-```python
-local_created = record.get("localCreatedAt")
-tz_str = record.get("timeZone")
-if local_created:
-    dt = datetime.strptime(str(local_created), "%Y-%m-%d %H:%M:%S")
-    if tz_str:
-        parts = str(tz_str).strip().split(":")
-        hours = int(parts[0])
-        mins = int(parts[1]) if len(parts) > 1 else 0
-        if hours < 0:
-            mins = -mins
-        dt = dt.replace(tzinfo=timezone(timedelta(hours=hours, minutes=mins)))
-    return int(dt.timestamp())
-```
-
----
-
-## 5. Garmin FIT `muscle_mass` (Percentage vs. Kilograms)
-
-### Target
-`python-garminconnect` body composition wrappers and sync scripts.
-
-### Problem
-Renpho's `muscle` metric is returned as a **percentage (%) of total weight** (e.g., `51.2` for 51.2%).
-Garmin Connect's underlying FIT scale message (`WeightScaleMesg`) strictly expects **`muscle_mass` in kilograms (kg)**.
-
-If a script forwards `muscle` directly to `garmin.add_body_composition()`, a 90 kg user with 50% muscle will see 50 kg recorded, leading to corrupted trends in Garmin Connect.
-
-### Fix
-```python
-raw_muscle = positive_float(record.get("muscle"))
-if raw_muscle is not None:
-    # If raw_muscle is a percentage (e.g., 51.2% and fat is 20%)
-    if percent_fat is not None and (raw_muscle + percent_fat) <= 105.0 and raw_muscle > 20.0:
-        muscle_mass_kg = round(weight_kg * (raw_muscle / 100.0), 2)
-    else:
-        muscle_mass_kg = round(raw_muscle, 2)
-```
+The conversion engine calculates:
+$$\text{muscle\_mass\_kg} = \text{round}\left(\text{weight\_kg} \times \frac{\text{muscle\_percent}}{100.0}, 2\right)$$
+with safety heuristics (`(raw_muscle + percent_fat) <= 105.0`) to avoid double-converting if an alternate scale model reports in kilograms.
