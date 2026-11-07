@@ -15,6 +15,7 @@ dist/
 
 # Runtime logs
 *.log
+logs/
 launchd*.out.log
 launchd*.err.log
 
@@ -23,6 +24,7 @@ data/
 
 # Personal local machine LaunchAgents
 com.erikwebb.*.plist
+launchd/local/
 
 # macOS system files
 .DS_Store

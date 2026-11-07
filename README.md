@@ -33,7 +33,7 @@ This project includes solutions for several undocumented Renpho API quirks:
 2. **24-Shard Database Routing**: Renpho shards measurements across `measurements_info_0` through `measurements_info_23` calculated via `user_id % 24`. The sync script computes this dynamically when device metadata is omitted.
 3. **Timezone & Epoch Correction**: Renpho's raw `timeStamp` field is notoriously misaligned by server backend offsets. We parse `localCreatedAt` alongside `timeZone` offsets for accurate local timestamps.
 
-*(See [UPSTREAM_NOTES.md](UPSTREAM_NOTES.md) for detailed technical reports and patches for upstream client libraries).*
+*(See [UPSTREAM_NOTES.md](docs/UPSTREAM_NOTES.md) for detailed technical reports and patches for upstream client libraries).*
 
 ---
 
@@ -114,10 +114,10 @@ Run the sync script in dry-run mode. If Garmin tokens do not exist in `~/.garmin
 
 ```bash
 # Export Garmin history to CSV and styled Excel in data/
-./export.sh
+./scripts/export.sh
 
 # Open Google Sheet in browser ready for 1-click paste (copies TSV to macOS clipboard)
-./export.sh --open-sheet
+./scripts/export.sh --open-sheet
 ```
 
 ---
@@ -140,12 +140,12 @@ Run the sync script in dry-run mode. If Garmin tokens do not exist in `~/.garmin
 
 ## Automated Scheduling (macOS `launchd`)
 
-Templates for running automatic background syncs on macOS via `launchd` are provided in [`templates/`](templates/).
+Templates for running automatic background syncs on macOS via `launchd` are provided in [`launchd/`](launchd/).
 
 ### Daily Scale Sync (9:00 AM)
 
 ```bash
-cp templates/com.example.renpho-garmin-sync.plist ~/Library/LaunchAgents/com.user.renpho-garmin-sync.plist
+cp launchd/com.example.renpho-garmin-sync.plist ~/Library/LaunchAgents/com.user.renpho-garmin-sync.plist
 
 # Update paths inside the plist to point to your repository clone
 sed -i '' "s|/PATH/TO/renpho-garmin-sync|$(pwd)|g" ~/Library/LaunchAgents/com.user.renpho-garmin-sync.plist
@@ -157,12 +157,12 @@ launchctl load ~/Library/LaunchAgents/com.user.renpho-garmin-sync.plist
 ### Weekly History Export (Sundays 9:30 AM)
 
 ```bash
-cp templates/com.example.renpho-garmin-export.plist ~/Library/LaunchAgents/com.user.renpho-garmin-export.plist
+cp launchd/com.example.renpho-garmin-export.plist ~/Library/LaunchAgents/com.user.renpho-garmin-export.plist
 sed -i '' "s|/PATH/TO/renpho-garmin-sync|$(pwd)|g" ~/Library/LaunchAgents/com.user.renpho-garmin-export.plist
 launchctl load ~/Library/LaunchAgents/com.user.renpho-garmin-export.plist
 ```
 
-The runner scripts (`run_sync.sh` and `run_export.sh`) include a built-in network readiness guard that polls for active Wi-Fi and DNS resolution for up to 30 seconds after waking from system sleep before firing requests.
+The runner scripts (`scripts/run_sync.sh` and `scripts/run_export.sh`) include a built-in network readiness guard that polls for active Wi-Fi and DNS resolution for up to 30 seconds after waking from system sleep before firing requests.
 
 ---
 

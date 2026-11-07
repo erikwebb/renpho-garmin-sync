@@ -9,16 +9,16 @@
 ## Scheduled Jobs (macOS LaunchAgents)
 
 - **Daily Scale Sync** (`com.erikwebb.renpho-garmin-sync`):
-  - Script: `run_sync.sh` (`sync_renpho_to_garmin.py --notify`)
+  - Script: `scripts/run_sync.sh` (`sync_renpho_to_garmin.py --notify`)
   - Schedule: Daily at 9:00 AM
-  - Log: `sync.log`
+  - Log: `logs/sync.log`
 - **Weekly Body Composition Export** (`com.erikwebb.renpho-garmin-export`):
-  - Script: `run_export.sh` (`export_body_composition.py --skip-local --no-clipboard --notify`)
+  - Script: `scripts/run_export.sh` (`export_body_composition.py --skip-local --no-clipboard --notify`)
   - Schedule: Weekly on Sundays at 9:30 AM
-  - Log: `export.log`
+  - Log: `logs/export.log`
 
 ## Manual Execution Scripts
 
-- `./export.sh`: Runs [export_body_composition.py](file:///Users/erikwebb/Development/renpho-garmin-sync/export_body_composition.py) interactively with the project virtual environment, forwarding any CLI options (e.g. `--open-sheet`).
+- `./scripts/export.sh`: Runs [export_body_composition.py](file:///Users/erikwebb/Development/renpho-garmin-sync/export_body_composition.py) interactively with the project virtual environment, forwarding any CLI options (e.g. `--open-sheet`).
 
 

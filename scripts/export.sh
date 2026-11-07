@@ -2,13 +2,14 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 # Resolve Python binary: env override -> local .venv -> sibling python-garminconnect venv -> system python3
 if [ -z "${PYTHON_BIN:-}" ]; then
-    if [ -x "${SCRIPT_DIR}/.venv/bin/python" ]; then
-        PYTHON_BIN="${SCRIPT_DIR}/.venv/bin/python"
-    elif [ -x "${SCRIPT_DIR}/../python-garminconnect/.venv/bin/python" ]; then
-        PYTHON_BIN="${SCRIPT_DIR}/../python-garminconnect/.venv/bin/python"
+    if [ -x "${REPO_ROOT}/.venv/bin/python" ]; then
+        PYTHON_BIN="${REPO_ROOT}/.venv/bin/python"
+    elif [ -x "${REPO_ROOT}/../python-garminconnect/.venv/bin/python" ]; then
+        PYTHON_BIN="${REPO_ROOT}/../python-garminconnect/.venv/bin/python"
     elif [ -x "${HOME}/Development/python-garminconnect/.venv/bin/python" ]; then
         PYTHON_BIN="${HOME}/Development/python-garminconnect/.venv/bin/python"
     else
@@ -16,4 +17,4 @@ if [ -z "${PYTHON_BIN:-}" ]; then
     fi
 fi
 
-exec "${PYTHON_BIN}" "${SCRIPT_DIR}/export_body_composition.py" --skip-local "$@"
+exec "${PYTHON_BIN}" "${REPO_ROOT}/export_body_composition.py" --skip-local "$@"

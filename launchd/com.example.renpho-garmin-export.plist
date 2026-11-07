@@ -8,7 +8,7 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/zsh</string>
-        <string>/PATH/TO/renpho-garmin-sync/run_export.sh</string>
+        <string>/PATH/TO/renpho-garmin-sync/scripts/run_export.sh</string>
     </array>
 
     <key>WorkingDirectory</key>
@@ -26,9 +26,9 @@
     </dict>
 
     <key>StandardOutPath</key>
-    <string>/PATH/TO/renpho-garmin-sync/launchd-export.out.log</string>
+    <string>/PATH/TO/renpho-garmin-sync/logs/launchd-export.out.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/PATH/TO/renpho-garmin-sync/launchd-export.err.log</string>
+    <string>/PATH/TO/renpho-garmin-sync/logs/launchd-export.err.log</string>
 </dict>
 </plist>
