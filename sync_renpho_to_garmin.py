@@ -83,19 +83,22 @@ def send_notification(title: str, message: str, subtitle: str = "") -> None:
 
 
 class PatchedRenphoClient(RenphoClient):
-    """RenphoClient with the Oct 2026 login header fix and dual-endpoint history fetch."""
+    """RenphoClient with session token caching and dual-endpoint history fetch."""
 
     def __init__(self, email: str, password: str, *, debug: bool = False):
         super().__init__(email, password, debug=debug)
-        # Since Oct 2026, Renpho rejects login requests with code=-114 ("Decryption failed")
-        # unless appVersion and platform headers are present on the unauthenticated login call.
-        self._session.headers.update(
-            {
-                "appVersion": APP_VERSION,
-                "platform": PLATFORM,
-                "User-Agent": "okhttp/4.9.3",
-            }
-        )
+        # Ensure User-Agent is set across either renpho-py or legacy renpho-api
+        session = getattr(self, "_session", None)
+        if session is None and hasattr(self, "_transport"):
+            session = getattr(self._transport, "session", None)
+        if session is not None:
+            session.headers.update(
+                {
+                    "appVersion": APP_VERSION,
+                    "platform": PLATFORM,
+                    "User-Agent": "okhttp/4.9.3",
+                }
+            )
 
     def _post(
         self,
@@ -104,10 +107,11 @@ class PatchedRenphoClient(RenphoClient):
         *,
         auth: bool = True,
         extra_headers: dict[str, str] | None = None,
+        **kwargs: Any,
     ) -> dict:
-        result = super()._post(endpoint, body, auth=auth, extra_headers=extra_headers)
-        # Normalize Renpho's newer `message` field into `msg` so _check_response surfaces it
-        if "msg" not in result and "message" in result:
+        result = super()._post(endpoint, body, auth=auth, **kwargs)
+        # Normalize Renpho's newer `message` field into `msg` so callers surface it
+        if isinstance(result, dict) and "msg" not in result and "message" in result:
             result["msg"] = result["message"]
         return result
 
